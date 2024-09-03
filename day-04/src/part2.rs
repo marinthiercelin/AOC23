@@ -7,8 +7,9 @@ pub fn run(input: &str) -> String {
     let mut cards_with_counts: Vec<(&Card, u32)> = cards.iter().map(|c| (c, 1)).collect();
     for (card_index, card) in cards.iter().enumerate() {
         let matching_numbers = card.count_matching_numbers();
+        let count = cards_with_counts[card_index].1;
         for copy_index in 1..=matching_numbers {
-            cards_with_counts[card_index + copy_index as usize].1 += 1;
+            cards_with_counts[card_index + copy_index as usize].1 += count;
         }
     }
     let total = cards_with_counts.iter().map(|(_, count)| count).sum::<u32>();

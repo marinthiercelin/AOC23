@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 utils = { path = "../utils"}
+
+[dev-dependencies]
+rand = "0.8.5"

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Eq, PartialEq, Hash, Clone)]
+#[derive(Eq, PartialEq, Hash, Clone, Debug)]
 pub enum Category {
     Seed,
     Soil,

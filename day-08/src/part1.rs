@@ -1,11 +1,13 @@
-use std::collections::HashMap;
+
+use crate::common::{self, Instruction};
 
 pub fn run(input: &str) -> String {
-    let (instructions, graph) = parse_instructions_and_graphs(input);
+    let (instructions, graph) = common::parse_instructions_and_graphs(input);
     // let graph = dbg!(graph);
     let mut current_node = "AAA";
     let mut instruction_count = 0;
-    let instructions_length = instructions.len();
+    let instructions_length = dbg!(instructions.len());
+
     while current_node != "ZZZ" {
         let instruction = &instructions[instruction_count % instructions_length];
         current_node = match instruction {
@@ -15,47 +17,6 @@ pub fn run(input: &str) -> String {
         instruction_count += 1;
     }
     return instruction_count.to_string();
-}
-type NodeKey = String;
-
-#[derive(Debug)]
-struct Graph {
-    nodes: HashMap<NodeKey, Node>,
-}
-
-enum Instruction {
-    Left,
-    Right
-}
-
-fn parse_instructions(line: &str) -> Vec<Instruction> {
-    line.chars().map(|c| match c {
-        'L' => Instruction::Left,
-        'R' => Instruction::Right,
-        _ => panic!("Invalid instruction: {}", c),
-    }).collect()
-}
-
-fn parse_node(line: &str) -> Node {
-    let parts: Vec<&str> = line.split(" = ").collect();
-    let key = parts[0].to_string();
-    let children: Vec<&str> = parts[1].split(", ").collect();
-    Node { key, left: children[0][1..].to_string(), right: children[1][..children[1].len() - 1].to_string() }
-}
-
-fn parse_instructions_and_graphs(input: &str) -> (Vec<Instruction>, Graph) {
-    let mut lines = input.lines();
-    let instructions = parse_instructions(lines.next().unwrap());
-    lines.next(); // Skip the empty line
-    let nodes = lines.map(|l| parse_node(l)).map(|node| (node.key.clone(), node)).collect();
-    (instructions, Graph { nodes })
-}
-
-#[derive(Debug)]
-struct Node  {
-    key: NodeKey,
-    left: NodeKey,
-    right: NodeKey,
 }
 
 #[cfg(test)]

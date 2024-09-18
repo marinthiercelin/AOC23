@@ -1,4 +1,4 @@
-use crate::common::{self, GalaxyPosition, Universe, UniversePoint};
+use crate::common::{self, GalaxyPosition, Universe};
 
 pub fn run(input: &str) -> String {
     run_with_factor(input, 1_000_000)
@@ -21,9 +21,7 @@ impl Universe {
     fn expand_large(&self, factor: usize) -> Vec<GalaxyPosition> {
         let empty_rows = self.get_empty_rows();
         let empty_columns = self.get_empty_columns();
-        let galaxy_positions = self.grid.iter().enumerate().map(|(row_index, row)| {
-            row.iter().enumerate().filter(|(_, &point)| point == UniversePoint::Galaxy).map(|(column_index, _)| (row_index, column_index)).collect::<Vec<_>>()
-        }).flatten().collect::<Vec<_>>();
+        let galaxy_positions = self.get_galaxy_positions();
         let expanded_galaxy_positions = galaxy_positions.iter().map(|(row, column)| {
             let empty_rows_before = empty_rows.iter().filter(|&empty_row| empty_row < row).count();
             let empty_columns_before = empty_columns.iter().filter(|&empty_column| empty_column < column).count();

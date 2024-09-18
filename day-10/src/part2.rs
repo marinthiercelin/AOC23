@@ -32,35 +32,49 @@ impl Grid {
 }
 
 fn find_enclosed_tiles(grid_dimension: (usize, usize), main_loop: Vec<&Tile>) -> Vec<Position> {
-    let loop_positions = main_loop.iter().map(|tile| tile.position).collect::<HashSet::<Position>>();
     let loop_by_positions = main_loop.iter().map(|&tile| (tile.position, tile)).collect::<HashMap::<Position, &Tile>>();
     let mut enclosed_tiles = Vec::new();
     for y in 0..grid_dimension.1 {
         for x in 0..grid_dimension.0 {
             let position = (x, y);
-            if loop_positions.contains(&position) {
+            if loop_by_positions.contains_key(&position) {
                 continue;
             }
-            let mut ray_count = 0;
+            let mut ray_tiles = Vec::new();
             for mut ray_index in x+1..grid_dimension.0 {
                 let ray_position = (ray_index, y);
-                if loop_positions.contains(&ray_position) {
+                if loop_by_positions.contains_key(&ray_position) {
                     let ray_tile = loop_by_positions.get(&ray_position).unwrap();
-                    if ray_tile.value == TileValue::Pipe(Direction::North, Direction::South) {
-                        ray_count += 1;
-                    } else {
-                        loop {
-                            ray_index += 1;
-                            let next_ray_position = (ray_index, y);
-                            let ray_tile = loop_by_positions.get(&ray_position).unwrap();
-                        }
-                    }
+                    ray_tiles.push(ray_tile);
                 }
             }
-            if ray_count % 2 == 1 {
+            let mut cross_count = 0;
+            let mut incomplete_cross = None;
+            for ray_tile in ray_tiles {
+                if ray_tile.value == TileValue::Pipe(Direction::North, Direction::South) {
+                    cross_count += 1;
+                }
+                if ray_tile.value == TileValue::Pipe(Direction::North, Direction::East) || ray_tile.value == TileValue::Pipe(Direction::South, Direction::East) {
+                    incomplete_cross = Some(&ray_tile.value)
+                }
+                if ray_tile.value == TileValue::Pipe(Direction::North, Direction::West) {
+                    if *incomplete_cross.unwrap() ==  TileValue::Pipe(Direction::South, Direction::East) {
+                        cross_count += 1;
+                    }
+                    incomplete_cross = None;
+                }
+                if ray_tile.value == TileValue::Pipe(Direction::South, Direction::West) {
+                    if *incomplete_cross.unwrap() ==  TileValue::Pipe(Direction::North, Direction::East) {
+                        cross_count += 1;
+                    }
+                    incomplete_cross = None;
+                }
+            }
+            if cross_count % 2 == 1 {
                 enclosed_tiles.push(position);
             }
         }
+
     }
     enclosed_tiles
 }

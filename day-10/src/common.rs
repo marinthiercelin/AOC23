@@ -1,4 +1,3 @@
-use std::fmt::Display;
 
 #[derive(PartialEq, Debug)]
 pub enum TileValue {

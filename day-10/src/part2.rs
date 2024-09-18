@@ -1,5 +1,4 @@
-use core::net;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::common::{Direction, Grid, Position, Tile, TileValue};
 
@@ -41,7 +40,7 @@ fn find_enclosed_tiles(grid_dimension: (usize, usize), main_loop: Vec<&Tile>) ->
                 continue;
             }
             let mut ray_tiles = Vec::new();
-            for mut ray_index in x+1..grid_dimension.0 {
+            for ray_index in x+1..grid_dimension.0 {
                 let ray_position = (ray_index, y);
                 if loop_by_positions.contains_key(&ray_position) {
                     let ray_tile = loop_by_positions.get(&ray_position).unwrap();

@@ -1,6 +1,6 @@
 use std::env;
 
-use day_04::part1;
+use day___DAY_NUMBER__::part1;
 use utils;
 
 fn main() {

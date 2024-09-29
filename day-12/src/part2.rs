@@ -1,55 +1,12 @@
-use std::{sync::mpsc::channel, thread};
+use std::{cell::RefCell, collections::HashMap};
 
-use crate::common::{broken_groups, SpringState, SpringsRow};
+use crate::common::{SpringState, SpringsRow};
 use SpringState::{Working, Broken};
 
 pub fn run(input: &str) -> String {
-    let lines: Vec<&str> = input.lines().collect();
-    let mut sum = 0;
-    let mut done = 0;
-    let total = lines.len();
-    for line in lines {
-        println!("Starting row parsing");
-        let row = SpringsRow::parse_with_duplication(line);
-        println!("Starting row counting");
-        let count = row.count_valid_states_recursive();
-        sum += count;
-        done += 1;
-        println!("Progress {done}/{total}");
-    }
+    let sum: u64 = input.lines().map(SpringsRow::parse_with_duplication).map(|row| row.count_valid_states_recursive()).sum();
     sum.to_string()
 }
-
-// pub fn run_parallel(input: &str) -> String {
-    
-
-//     let lines: Vec<&str> = input.lines().collect();
-
-//     let num_rows = lines.len();
-
-//     println!("number of rows : {}", num_rows );
-
-//     let (sender, receiver) = channel(); 
-
-//     lines.into_iter().for_each(|line|{
-//         let sender = sender.clone();
-//         let line = line.to_string();
-//         thread::spawn(move || {
-//             let row = SpringsRow::parse_with_duplication(&line);
-//             sender.send(row.count_valid_states_recursive()).unwrap();
-//         });
-//     });
-
-//     let mut received = 0;
-//     let mut sum = 0;
-//     while received != num_rows {
-//         let count = receiver.recv().unwrap();
-//         received += 1;
-//         println!("Progress: {received}/{num_rows}");
-//         sum += count;
-//     }
-//     return sum.to_string();
-// }
 
 impl SpringsRow {
     fn parse_with_duplication(line: &str) -> Self {
@@ -72,84 +29,93 @@ impl SpringsRow {
         }
         Self{ states: duplicated_states, broken_groups: duplicated_broken_groups}
     }
+
+    fn count_valid_states_recursive(&self) -> u64 {
+        count_valid_states_recursive(&self.states, &self.broken_groups, &mut HashMap::new())
+    }
 }
 
-impl SpringsRow {
-    fn count_valid_states_recursive(&self) -> u32 {
-        self.explore_valid_states(&[])
+impl SpringState {
+
+    fn to_char(&self) -> char {
+        match self {
+            Working => '.',
+            Broken => '#',
+        }
+    }
+    
+}
+
+fn to_string(states: &[Option<SpringState>], groups: &[u32]) -> String {
+    let state_string: String = states.iter().map(|state| state.map_or('?', |state| state.to_char())).collect();
+    let group_string: String = groups.iter().map(|g| g.to_string()).collect::<Vec<String>>().join(",");
+    format!("{state_string} {group_string}")
+}
+
+
+fn count_valid_states_recursive(states: &[Option<SpringState>], groups: &[u32], saved_results: &mut HashMap<String, u64>) -> u64 {
+
+    let key = to_string(states, groups);
+
+    if saved_results.contains_key(&key) {
+        return *saved_results.get(&key).unwrap();
     }
 
-    fn is_coherent(&self, fixed: &[SpringState]) -> bool {
-        let broken_groups = broken_groups(&fixed);
-        if broken_groups.is_empty() {
-            return true;
-        }
-        if broken_groups.len() > self.broken_groups.len() {
-            return false;
-        }
-        let last_index = broken_groups.len() - 1;
-        let prefix_is_coherent = self.broken_groups.starts_with(&broken_groups[..last_index]);
-        let last_is_coherent = match fixed.last().unwrap() {
-            Working => {
-                broken_groups[last_index] == self.broken_groups[last_index]
-            }
-            Broken => {
-                // the last group potentially includes the next unknowns
-                broken_groups[last_index] <= self.broken_groups[last_index]
-            }
-        };
-        prefix_is_coherent && last_is_coherent
-    }
+    let saved_results = RefCell::new(saved_results);
 
-    fn explore_valid_states(&self, fixed: &[SpringState]) -> u32 {
-
-        let to_fix = &self.states[fixed.len()..];
-
-        let mut fixed = Vec::from(dbg!(fixed));
-    
-        if !to_fix.is_empty() {
-            // skip to the next unknown state
-            for state in to_fix {
-                if state.is_none() {
-                    break;
-                }
-                fixed.push(state.unwrap());
-            }
-        }
-    
-        let to_fix = &self.states[fixed.len()..];
-        
-        // Check if we are done
-        if to_fix.is_empty() {
-            return if broken_groups(&fixed) == *self.broken_groups {
-                // Reached a solution
-                1 
-            } else { 
-                0 
+    let body = || {
+        if groups.is_empty() {
+            return if states.contains(&Some(Broken)) {
+                0
+            } else {
+                1
             };
         }
-        
-        // First set the unknown state to working
-        fixed.push(Working);
-        let working_branch_count = if !self.is_coherent(&fixed) {
-            0
-        } else {
-            self.explore_valid_states(&fixed)
+    
+        if states.is_empty() {
+            return 0;
+        }
+    
+        let first_state = states[0];
+    
+        let first_group = groups[0] as usize;
+
+        let broken_logic = || {
+            if states.len() < first_group {
+                return 0;
+            }
+            let potential_group = &states[..first_group];
+            if potential_group.contains(&Some(Working)) {
+                return 0;
+            }
+            if states.len() == first_group {
+                return if groups.len() == 1 {
+                    1
+                } else {
+                    0
+                };
+            }
+            let state_after_group = states[first_group];
+            if state_after_group.is_none() || state_after_group.unwrap() == Working {
+                return count_valid_states_recursive(&states[first_group+1..], &groups[1..], &mut saved_results.borrow_mut());
+            }
+            return 0;
         };
-        fixed.pop();
     
-        // Then set the unknown state to broken
-        fixed.push(Broken);
-        let broken_branch_count = if !self.is_coherent(&fixed) {
-            0
-        } else {
-            self.explore_valid_states(&fixed)
+        let working_logic = || {
+            count_valid_states_recursive(&states[1..], groups, &mut saved_results.borrow_mut())
         };
-        fixed.pop();
     
-    
-        return working_branch_count + broken_branch_count;
-    }
+        match first_state {
+            Some(Working) => working_logic(),
+            Some(Broken) => broken_logic(),
+            None => working_logic() + broken_logic(),
+        }
+    };
+
+    let result = body();
+    saved_results.borrow_mut().insert(key, result);
+    return result;
 }
 
 
@@ -192,17 +158,6 @@ mod tests {
         let input = "???.### 1,1,3";
         let row = SpringsRow::parse_with_duplication(input);
         assert_eq!(row.count_valid_states_recursive(), 1)
-        
-    }
-
-    #[test]
-    fn test_is_coherent() {
-        let input = "???.### 1,1,3";
-        let row = SpringsRow::parse_with_duplication(input);
-        let solution: Vec<SpringState> = vec![vec![Broken, Working, Broken, Working, Broken, Broken, Broken, Working];5].into_iter().flatten().collect();
-        for i in 0..solution.len() -1 {
-            assert!(row.is_coherent(&solution[..i]))
-        }
         
     }
 

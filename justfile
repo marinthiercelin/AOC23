@@ -10,3 +10,6 @@ add-to-workspace day-number:
 	sed -i "s/^]/    \"day-{{day-number}}\",\n]/g" Cargo.toml
 
 new-day day-number: (set-day-number day-number) (add-to-workspace day-number)
+
+run day-number part-number:
+	cargo run -p day-{{day-number}} --bin part{{part-number}} -- day-{{day-number}}/input.txt

@@ -4,7 +4,18 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 pub fn run(input: &str) -> String {
-    todo!("Implement");
+    let (system, parts) = parse_input(input);
+    let accepted_parts : Vec<&Part> = parts.iter().filter(|part| system.check_part(part)).collect();
+    let total: u32 = accepted_parts.iter().map(|part| part.total_rating()).sum();
+    return total.to_string()
+}
+
+fn parse_input(input: &str) -> (System, Vec<Part>) {
+    let split : Vec<&str> = input.split("\n\n").collect();
+    assert_eq!(split.len(), 2);
+    let system = System::parse(split[0]);
+    let parts = split[1].lines().map(Part::parse).collect();
+    (system, parts)
 }
 
 struct System {
@@ -15,6 +26,18 @@ impl System {
     fn parse(input: &str) -> Self {
         let workflows = input.lines().map(Workflow::parse).map(|w|(w.name.clone(), w)).collect();
         Self { workflows }
+    }
+
+    fn check_part(&self, part: &Part) -> Decision {
+        let mut workflow = self.workflows.get("in").expect("No in workflow");
+        loop {
+            let destination: &RuleDestination = workflow.apply_to(part);
+            if let &RuleDestination::Decision(decision) = destination {
+                return decision
+            }
+            let name = destination.name();
+            workflow = self.workflows.get(name).expect("Couldn't find destination workflow")
+        }
     }
 }
 
@@ -35,6 +58,10 @@ impl Workflow {
         let rules = rules.split(",").map(Rule::parse).collect();
         Self { name, rules }
     }
+
+    fn apply_to(&self, part: &Part) -> &RuleDestination {
+        self.rules.iter().find_map(|rule| rule.apply_to(part)).expect("No rule are matching")
+    }
 }
 
 struct Rule {
@@ -54,6 +81,13 @@ impl Rule {
             let destination = RuleDestination::parse(rule);
             Self { condition: None, destination }
         }
+    }
+
+    fn apply_to(&self, part: &Part) -> Option<&RuleDestination> {
+        if self.condition.as_ref().is_some_and(|condition| !condition.is_matching(part) ) {
+            return None
+        }
+        Some(&self.destination)
     }
 }
 
@@ -81,12 +115,24 @@ impl RuleCondition {
             panic!("Invalid condition");
         }
     }
+
+    fn is_matching(&self, part: &Part) -> bool {
+        let value = part.get_value(&self.category);
+        if self.lower && value < self.bound {
+            return true;
+        }
+        if !self.lower && value > self.bound {
+            return true;
+        }
+        return false;
+    }
 }
 
 type Decision = bool;
 const ACCEPT: bool = true;
 const REJECT: bool = false;
 
+#[derive(Debug, Clone)]
 enum RuleDestination {
     Workflow{name: String},
     Decision(Decision)
@@ -98,6 +144,13 @@ impl RuleDestination {
             "A" => Self::Decision(ACCEPT),
             "R" => Self::Decision(REJECT),
             _ => Self::Workflow { name: destination.to_string() }
+        }
+    }
+
+    fn name(&self) -> &String {
+        match self {
+            RuleDestination::Workflow { name } => name,
+            _ => panic!("Destination is not a workflow")
         }
     }
 }
@@ -136,6 +189,19 @@ impl Part {
         let s = captures["s"].parse().expect("s not an int");
         Self{ x, m, a, s }
     }
+
+    fn get_value(&self, category: &Category) -> u32 {
+        match  category {
+            Category::X => self.x,
+            Category::M => self.m,
+            Category::A => self.a,
+            Category::S => self.s,
+        }
+    }
+
+    fn total_rating(&self) -> u32 {
+        self.x + self.m + self.a + self.s
+    }
 }
 
 
@@ -162,7 +228,7 @@ hdj{m>838:A,pv}
 {x=2036,m=264,a=79,s=2244}
 {x=2461,m=1339,a=466,s=291}
 {x=2127,m=1623,a=2188,s=1013}";
-        let expected_output = "";
+        let expected_output = "19114";
         assert_eq!(run(input), expected_output);
     }
 

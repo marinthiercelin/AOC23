@@ -2,7 +2,7 @@ use crate::common::Map;
 
 pub fn run(input: &str) -> String {
     let map = Map::parse(input);
-    map.count_reachable(64, false).to_string()
+    map.count_reachable(64).to_string()
 }
 
 
@@ -25,6 +25,6 @@ mod tests {
 ...........";
         let map = Map::parse(input);
         let expected_output = 16;
-        assert_eq!(map.count_reachable(6, false), expected_output);
+        assert_eq!(map.count_reachable(6), expected_output);
     }
 }

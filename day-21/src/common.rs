@@ -1,44 +1,48 @@
 use itertools::Itertools;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Tile {
+pub enum Tile {
     Garden,
     Rock
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-struct Position {
-    row: i32, col: i32
+pub struct Position {
+    pub row: usize, pub col: usize
 }
 
-impl Position {
-    fn get_neighbors(&self, (max_row, max_col): (i32, i32), repeat: bool) -> Vec<Self>{
-        let mut neighbors = Vec::new();
-        if self.row > 0 || repeat {
-            neighbors.push(Position{
-                row: self.row - 1, 
-                col: self.col
-            });
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Up, Down, Left, Right
+}
+
+pub const ALL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
+
+impl Map {
+    pub fn move_to(&self, position: &Position, direction: &Direction) -> Option<Position> {
+        let (max_row, max_col) = self.dimensions;
+        let mut row = position.row as i32;
+        let mut col = position.col as i32;
+        match direction {
+            Direction::Up => row -= 1,
+            Direction::Down => row += 1,
+            Direction::Left => col -= 1,
+            Direction::Right => col += 1,
         }
-        if self.row + 1 < max_row  || repeat {
-            neighbors.push(Position{
-                row: self.row + 1, 
-                col: self.col
-            });
-        } 
-        if self.col > 0 || repeat {
-            neighbors.push(Position{
-                row: self.row, 
-                col: self.col - 1
-            });
+        if row < 0 || row >= max_row as i32 || col < 0 || col >= max_col as i32 {
+            return None
         }
-        if self.col + 1 < max_col  || repeat {
-            neighbors.push(Position{
-                row: self.row , 
-                col: self.col + 1
-            });
-        }
-        neighbors
+        return Some( Position { row: row as usize, col: col as usize} )
+    }
+}
+
+impl Map {
+    pub fn get_neighbors(&self, position: &Position) -> Vec<Position> {
+        let neighbors = ALL_DIRECTIONS
+        .iter()
+        .filter_map(|direction| self.move_to(position, direction))
+        .filter(|position| self.get_tile(position) == Tile::Garden);
+        return neighbors.collect();
     }
 }
 
@@ -53,9 +57,9 @@ impl Tile {
 }
 
 pub struct Map {
-    start: Position,
-    dimensions: (i32, i32),
-    tiles: Vec<Vec<Tile>>
+    pub start: Position,
+    pub dimensions: (usize, usize),
+    pub tiles: Vec<Vec<Tile>>
 }
 
 impl Map {
@@ -70,7 +74,7 @@ impl Map {
                     .enumerate()
                     .map(|(col, char)|{
                         if char == 'S' {
-                            start = Some(Position { row: row as i32, col: col as i32 });
+                            start = Some(Position { row, col });
                             Tile::Garden
                         } else {
                             Tile::parse(&char)
@@ -79,22 +83,19 @@ impl Map {
                     .collect()
             })
             .collect();
-        let dimensions = (tiles.len() as i32, tiles[0].len() as i32);
+        let dimensions = (tiles.len(), tiles[0].len());
         Self { start: start.expect("Start not found"), tiles, dimensions}
     }
 
     fn get_tile(&self, pos: &Position) -> Tile {
-        let (max_row, max_col) = self.dimensions;
-        let row = pos.row.rem_euclid(max_row) as usize;
-        let col = pos.col.rem_euclid(max_col) as usize;
-        self.tiles[row][col]
+        self.tiles[pos.row][pos.col]
     }
 
-    pub fn count_reachable(&self, steps: u32, repeat: bool) -> usize {
+    pub fn count_reachable(&self, steps: u32) -> usize {
         let mut positions = vec![self.start];
         for _ in 0..steps {
             positions = positions.into_iter().flat_map(|pos|{
-                pos.get_neighbors(self.dimensions, repeat).into_iter().filter(|pos|{
+                self.get_neighbors(&pos).into_iter().filter(|pos|{
                     self.get_tile(&pos) == Tile::Garden
                 })
             }).unique().collect()

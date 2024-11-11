@@ -25,7 +25,7 @@ impl Coordinates {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Brick {
-    id: u32,
+    pub id: u32,
     start: Coordinates,
     end: Coordinates,
     min_x: u32, max_x: u32,

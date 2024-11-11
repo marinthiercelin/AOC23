@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::common::{self, Brick};
 
@@ -11,10 +11,12 @@ pub fn run(input: &str) -> String {
 pub fn count_falling(bricks: Vec<Brick>) -> usize {
     let (settled, supported_by) = common::settle_bricks(bricks);
     let mut count = 0;
-    for brick in settled.iter() {
-        let mut falling = vec![brick.id];
+    let mut falling_saved: HashMap<u32, HashSet<u32>> = HashMap::new();
+    for brick in settled.iter().rev() {
+        let mut falling = HashSet::new();
+        falling.insert(brick.id);
         loop {
-            let mut new_falling = supported_by
+            let new_falling = supported_by
             .iter()
             .filter(|(supported,_)| !falling.contains(supported))
             .filter(|(_, supports)| supports.iter().all(|support|falling.contains(&support)))
@@ -23,9 +25,18 @@ pub fn count_falling(bricks: Vec<Brick>) -> usize {
             if new_falling.is_empty() {
                 break;
             }
-            falling.append(&mut new_falling);
+            new_falling.iter().for_each(|id|{
+                falling.insert(*id);
+                if let Some(saved) = falling_saved.get(id) {
+                    saved
+                    .iter()
+                    .for_each(|saved_id|{falling.insert(*saved_id);});
+                }
+            });
         }
-        count += falling.len() - 1; // don't count the base brick
+        falling.remove(&brick.id); // don't count the base brick
+        count += falling.len();
+        falling_saved.insert(brick.id, falling);
     }
     
     count
